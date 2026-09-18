@@ -6,12 +6,11 @@ function collectErrors(
   acc: Record<string, string[]>,
 ): void {
   for (const error of errors) {
-    if (error.children?.length) {
-      collectErrors(error.children, acc);
-      continue;
-    }
     if (error.constraints) {
       acc[error.property] = Object.values(error.constraints);
+    }
+    if (error.children?.length) {
+      collectErrors(error.children, acc);
     }
   }
 }
