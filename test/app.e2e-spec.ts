@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { AppModule } from './../src/app.module';
+import { configureApp } from './../src/configure-app';
 import { truncateAllTables } from './utils/database-cleaner';
 
 describe('AppController (e2e)', () => {
@@ -17,13 +18,14 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    configureApp(app);
     await app.init();
     dataSource = app.get<DataSource>(getDataSourceToken());
   });
 
-  it('/hello (GET)', () => {
+  it('/api/v1/hello (GET)', () => {
     return request(app.getHttpServer())
-      .get('/hello')
+      .get('/api/v1/hello')
       .expect(200)
       .expect('Hello World!');
   });
