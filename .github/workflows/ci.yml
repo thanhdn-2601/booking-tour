@@ -56,6 +56,10 @@ jobs:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: tour_booking_test
+      JWT_SECRET: test-secret-please-ignore
+      JWT_ACCESS_TOKEN_TTL_SECONDS: 900
+      REFRESH_TOKEN_TTL_DAYS: 7
+      ACTIVATION_TOKEN_TTL_HOURS: 24
     steps:
       - uses: actions/checkout@v4
 
