@@ -7,11 +7,17 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  IsNull,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 
 import { isUniqueViolation } from '../common/postgres-errors';
 import { ACTIVATION_TOKEN_BYTES, REFRESH_TOKEN_BYTES } from './auth.constants';
@@ -38,6 +44,7 @@ export class AuthService {
     private readonly i18n: I18nService,
     @InjectRepository(UserAuthSession)
     private readonly sessionsRepository: Repository<UserAuthSession>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async register(dto: RegisterDto): Promise<RegisterResponse> {
@@ -164,6 +171,11 @@ export class AuthService {
     const session = await this.sessionsRepository.findOne({
       where: { refreshTokenHash },
       relations: { user: true },
+      select: {
+        id: true,
+        expiresAt: true,
+        user: { id: true, status: true },
+      },
     });
     if (!session) {
       throw new UnauthorizedException({
@@ -178,30 +190,44 @@ export class AuthService {
       });
     }
 
-    const claim = await this.sessionsRepository.update(
-      {
-        id: session.id,
-        revokedAt: IsNull(),
-        expiresAt: MoreThan(new Date()),
-      },
-      { revokedAt: new Date() },
-    );
-    if (!claim.affected) {
+    const outcome = await this.dataSource.transaction(async (manager) => {
+      const claim = await manager.update(
+        UserAuthSession,
+        {
+          id: session.id,
+          revokedAt: IsNull(),
+          expiresAt: MoreThan(new Date()),
+        },
+        { revokedAt: new Date() },
+      );
+      if (!claim.affected) {
+        return { kind: 'session-unusable' as const };
+      }
+
+      const user = session.user;
+      if (user.status !== UserStatus.ACTIVE) {
+        return { kind: 'user-inactive' as const };
+      }
+
+      return {
+        kind: 'ok' as const,
+        tokens: await this.issueTokens(user, manager),
+      };
+    });
+
+    if (outcome.kind === 'session-unusable') {
       throw new UnauthorizedException({
         code: 'SESSION_REVOKED_OR_EXPIRED',
         message: this.i18n.t('auth.session_revoked_or_expired'),
       });
     }
-
-    const user = session.user;
-    if (user.status !== UserStatus.ACTIVE) {
+    if (outcome.kind === 'user-inactive') {
       throw new ForbiddenException({
         code: 'USER_INACTIVE',
         message: this.i18n.t('auth.user_inactive'),
       });
     }
-
-    return this.issueTokens(user);
+    return outcome.tokens;
   }
 
   async logout(userId: number, refreshToken?: string): Promise<void> {
@@ -214,21 +240,22 @@ export class AuthService {
     );
   }
 
-  private async issueTokens(user: User): Promise<LoginResult> {
+  private async issueTokens(
+    user: User,
+    manager?: EntityManager,
+  ): Promise<LoginResult> {
     const expiresIn = this.configService.getOrThrow<number>(
       'JWT_ACCESS_TOKEN_TTL_SECONDS',
     );
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
+    const payload: JwtPayload = { sub: user.id };
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: `${expiresIn}s`,
     });
 
-    const { refreshToken, refreshTokenExpiresAt } =
-      await this.createSession(user);
+    const { refreshToken, refreshTokenExpiresAt } = await this.createSession(
+      user,
+      manager,
+    );
 
     return {
       response: {
@@ -243,6 +270,7 @@ export class AuthService {
 
   private async createSession(
     user: User,
+    manager?: EntityManager,
   ): Promise<{ refreshToken: string; refreshTokenExpiresAt: Date }> {
     const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
     const ttlDays = this.configService.getOrThrow<number>(
@@ -252,12 +280,15 @@ export class AuthService {
       Date.now() + Number(ttlDays) * 24 * 60 * 60 * 1000,
     );
 
-    const session = this.sessionsRepository.create({
+    const sessionsRepository = manager
+      ? manager.getRepository(UserAuthSession)
+      : this.sessionsRepository;
+    const session = sessionsRepository.create({
       userId: user.id,
       refreshTokenHash: this.hashToken(refreshToken),
       expiresAt: refreshTokenExpiresAt,
     });
-    await this.sessionsRepository.save(session);
+    await sessionsRepository.save(session);
 
     return { refreshToken, refreshTokenExpiresAt };
   }

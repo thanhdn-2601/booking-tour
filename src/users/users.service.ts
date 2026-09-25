@@ -7,6 +7,7 @@ import { Not, Repository } from 'typeorm';
 import { collectValidationErrors } from '../common/collect-validation-errors';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
+import { UserProfileResponse } from './interfaces/user-profile-response.interface';
 import { UserRole } from './user-role.enum';
 import { UserStatus } from './user-status.enum';
 import { User } from './user.entity';
@@ -21,6 +22,7 @@ export class UsersService {
   findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
+      select: { id: true, password: true, status: true },
     });
   }
 
@@ -35,7 +37,10 @@ export class UsersService {
   }
 
   findByActivationTokenHash(activationTokenHash: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { activationTokenHash } });
+    return this.usersRepository.findOne({
+      where: { activationTokenHash },
+      select: { id: true, activationTokenExpiresAt: true },
+    });
   }
 
   async create(data: CreateUserDto): Promise<User> {
@@ -66,6 +71,17 @@ export class UsersService {
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
     if (dto.phone !== undefined) user.phone = dto.phone;
     return this.usersRepository.save(user);
+  }
+
+  toProfileResponse(user: User): UserProfileResponse {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone,
+      role: user.role,
+      status: user.status,
+    };
   }
 
   // Conditional on status to make concurrent activation attempts safe: only one wins.

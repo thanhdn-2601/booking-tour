@@ -8,6 +8,8 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UserAuthSession } from './entities/user-auth-session.entity';
+import { ClearRefreshTokenCookieInterceptor } from './interceptors/clear-refresh-token-cookie.interceptor';
+import { RefreshTokenCookieInterceptor } from './interceptors/refresh-token-cookie.interceptor';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
@@ -24,6 +26,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    RefreshTokenCookieInterceptor,
+    ClearRefreshTokenCookieInterceptor,
+  ],
 })
 export class AuthModule {}

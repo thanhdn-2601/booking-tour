@@ -6,33 +6,29 @@ import {
   HttpStatus,
   Post,
   Query,
-  Req,
-  Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import type { CookieOptions, Request, Response } from 'express';
 
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
-import { REFRESH_TOKEN_COOKIE } from './auth.constants';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { RefreshTokenCookie } from './decorators/refresh-token-cookie.decorator';
 import { ActivateQueryDto } from './dto/activate-query.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ClearRefreshTokenCookieInterceptor } from './interceptors/clear-refresh-token-cookie.interceptor';
+import { RefreshTokenCookieInterceptor } from './interceptors/refresh-token-cookie.interceptor';
 import { ActivateResponse } from './interfaces/activate-response.interface';
-import { LoginResponse } from './interfaces/login-response.interface';
+import { LoginResult } from './interfaces/login-result.interface';
 import { RegisterResponse } from './interfaces/register-response.interface';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({ summary: 'Register a new account' })
   @Post('register')
@@ -49,14 +45,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Log in with email and password' })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResponse> {
-    const { response, refreshToken, refreshTokenExpiresAt } =
-      await this.authService.login(dto);
-    this.setRefreshTokenCookie(res, refreshToken, refreshTokenExpiresAt);
-    return response;
+  @UseInterceptors(RefreshTokenCookieInterceptor)
+  login(@Body() dto: LoginDto): Promise<LoginResult> {
+    return this.authService.login(dto);
   }
 
   @ApiOperation({
@@ -64,50 +55,23 @@ export class AuthController {
   })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResponse> {
-    const currentRefreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as
-      string | undefined;
-    const { response, refreshToken, refreshTokenExpiresAt } =
-      await this.authService.refresh(currentRefreshToken);
-    this.setRefreshTokenCookie(res, refreshToken, refreshTokenExpiresAt);
-    return response;
+  @UseInterceptors(RefreshTokenCookieInterceptor)
+  refresh(
+    @RefreshTokenCookie() currentRefreshToken: string | undefined,
+  ): Promise<LoginResult> {
+    return this.authService.refresh(currentRefreshToken);
   }
 
   @ApiOperation({ summary: 'Log out the current session' })
   @ApiSecurity('bearer')
   @Post('logout')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(ClearRefreshTokenCookieInterceptor)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(
+  logout(
     @CurrentUser() user: User,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @RefreshTokenCookie() refreshToken: string | undefined,
   ): Promise<void> {
-    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as
-      string | undefined;
-    await this.authService.logout(user.id, refreshToken);
-    res.clearCookie(REFRESH_TOKEN_COOKIE, this.refreshTokenCookieOptions());
-  }
-
-  private setRefreshTokenCookie(
-    res: Response,
-    refreshToken: string,
-    expiresAt: Date,
-  ): void {
-    res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
-      ...this.refreshTokenCookieOptions(),
-      expires: expiresAt,
-    });
-  }
-
-  private refreshTokenCookieOptions(): CookieOptions {
-    return {
-      httpOnly: true,
-      secure: this.configService.get('NODE_ENV') === 'production',
-      sameSite: 'lax',
-    };
+    return this.authService.logout(user.id, refreshToken);
   }
 }

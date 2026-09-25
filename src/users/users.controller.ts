@@ -18,7 +18,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get the current user profile' })
   @Get()
   getMe(@CurrentUser() user: User): UserProfileResponse {
-    return this.toProfileResponse(user);
+    return this.usersService.toProfileResponse(user);
   }
 
   @ApiOperation({ summary: 'Update the current user profile' })
@@ -28,17 +28,6 @@ export class UsersController {
     @Body() dto: UpdateMeDto,
   ): Promise<UserProfileResponse> {
     const updated = await this.usersService.updateProfile(user, dto);
-    return this.toProfileResponse(updated);
-  }
-
-  private toProfileResponse(user: User): UserProfileResponse {
-    return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      phone: user.phone,
-      role: user.role,
-      status: user.status,
-    };
+    return this.usersService.toProfileResponse(updated);
   }
 }
