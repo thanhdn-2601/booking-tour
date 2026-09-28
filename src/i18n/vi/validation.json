@@ -1,0 +1,8 @@
+{
+  "is_email": "{property} phải là email hợp lệ",
+  "is_not_empty": "{property} không được để trống",
+  "is_string": "{property} phải là chuỗi ký tự",
+  "min_length": "{property} phải dài tối thiểu {constraints.0} ký tự",
+  "max_length": "{property} phải dài tối đa {constraints.0} ký tự",
+  "max_byte_length": "{property} không được vượt quá {constraints.0} byte khi mã hóa UTF-8"
+}
