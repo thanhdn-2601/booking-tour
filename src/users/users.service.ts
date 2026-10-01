@@ -2,11 +2,15 @@ import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { Not, Repository } from 'typeorm';
+import { EntityManager, ILike, Not, Repository } from 'typeorm';
 
 import { collectValidationErrors } from '../common/collect-validation-errors';
+import { AdminListUsersQueryDto } from './dto/admin-list-users-query.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
+import { AdminUsersQueryResult } from './interfaces/admin-users-query-result.interface';
+import { UpdateRoleResult } from './interfaces/update-role-result.interface';
+import { UpdateStatusOutcome } from './interfaces/update-status-outcome.interface';
 import { UserProfileResponse } from './interfaces/user-profile-response.interface';
 import { UserRole } from './user-role.enum';
 import { UserStatus } from './user-status.enum';
@@ -84,7 +88,67 @@ export class UsersService {
     };
   }
 
-  // Conditional on status to make concurrent activation attempts safe: only one wins.
+  async findAllForAdmin(
+    query: AdminListUsersQueryDto,
+  ): Promise<AdminUsersQueryResult> {
+    const { search, role, status, page, pageSize } = query;
+    const baseWhere = { ...(role && { role }), ...(status && { status }) };
+    const where = search
+      ? [
+          { ...baseWhere, email: ILike(`%${search}%`) },
+          { ...baseWhere, fullName: ILike(`%${search}%`) },
+        ]
+      : baseWhere;
+
+    const [items, total] = await this.usersRepository.findAndCount({
+      where,
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      order: { id: 'ASC' },
+    });
+    return { items, total };
+  }
+
+  async updateStatus(
+    userId: number,
+    status: UserStatus,
+    manager?: EntityManager,
+  ): Promise<UpdateStatusOutcome> {
+    const usersRepository = manager
+      ? manager.getRepository(User)
+      : this.usersRepository;
+    const updatedAt = new Date();
+    const result = await usersRepository.update(
+      { id: userId, status: Not(status) },
+      { status, updatedAt },
+    );
+    if (result.affected) {
+      return { kind: 'ok', id: userId, status, updatedAt };
+    }
+    const exists = await usersRepository.exists({ where: { id: userId } });
+    return { kind: exists ? 'unchanged' : 'not_found' };
+  }
+
+  async updateRole(
+    userId: number,
+    role: UserRole,
+  ): Promise<UpdateRoleResult | null> {
+    const updatedAt = new Date();
+    const result = await this.usersRepository.update(
+      { id: userId },
+      { role, updatedAt },
+    );
+    if (!result.affected) return null;
+    return { id: userId, role, updatedAt };
+  }
+
   async activateIfPending(
     userId: number,
     emailVerifiedAt: Date,
