@@ -32,5 +32,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     RefreshTokenCookieInterceptor,
     ClearRefreshTokenCookieInterceptor,
   ],
+  exports: [AuthService],
 })
 export class AuthModule {}

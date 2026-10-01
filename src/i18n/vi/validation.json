@@ -4,5 +4,9 @@
   "is_string": "{property} phải là chuỗi ký tự",
   "min_length": "{property} phải dài tối thiểu {constraints.0} ký tự",
   "max_length": "{property} phải dài tối đa {constraints.0} ký tự",
-  "max_byte_length": "{property} không được vượt quá {constraints.0} byte khi mã hóa UTF-8"
+  "max_byte_length": "{property} không được vượt quá {constraints.0} byte khi mã hóa UTF-8",
+  "is_enum": "{property} không hợp lệ",
+  "is_int": "{property} phải là số nguyên",
+  "min": "{property} phải lớn hơn hoặc bằng {constraints.0}",
+  "max": "{property} phải nhỏ hơn hoặc bằng {constraints.0}"
 }

@@ -31,6 +31,7 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { LoginResult } from './interfaces/login-result.interface';
 import { RegisterResponse } from './interfaces/register-response.interface';
+import { SessionTokens } from './interfaces/session-tokens.interface';
 import { PASSWORD_SALT_ROUNDS } from './password.constants';
 
 @Injectable()
@@ -240,6 +241,19 @@ export class AuthService {
     );
   }
 
+  async revokeAllSessions(
+    userId: number,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const sessionsRepository = manager
+      ? manager.getRepository(UserAuthSession)
+      : this.sessionsRepository;
+    await sessionsRepository.update(
+      { userId, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+  }
+
   private async issueTokens(
     user: User,
     manager?: EntityManager,
@@ -271,7 +285,7 @@ export class AuthService {
   private async createSession(
     user: User,
     manager?: EntityManager,
-  ): Promise<{ refreshToken: string; refreshTokenExpiresAt: Date }> {
+  ): Promise<SessionTokens> {
     const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
     const ttlDays = this.configService.getOrThrow<number>(
       'REFRESH_TOKEN_TTL_DAYS',
