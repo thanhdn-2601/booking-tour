@@ -164,8 +164,16 @@ describe('Admin categories (e2e)', () => {
 
       const toursRepository = dataSource.getRepository(Tour);
       await toursRepository.save([
-        toursRepository.create({ categoryId: category.id }),
-        toursRepository.create({ categoryId: category.id }),
+        toursRepository.create({
+          categoryId: category.id,
+          title: 'Tour 1',
+          description: '...',
+        }),
+        toursRepository.create({
+          categoryId: category.id,
+          title: 'Tour 2',
+          description: '...',
+        }),
       ]);
 
       const res = await request(app.getHttpServer())
@@ -264,7 +272,11 @@ describe('Admin categories (e2e)', () => {
       const target = await createCategory();
       const toursRepository = dataSource.getRepository(Tour);
       const tour = await toursRepository.save(
-        toursRepository.create({ categoryId: target.id }),
+        toursRepository.create({
+          categoryId: target.id,
+          title: 'Tour',
+          description: '...',
+        }),
       );
 
       await request(app.getHttpServer())

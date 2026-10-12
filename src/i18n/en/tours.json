@@ -1,0 +1,6 @@
+{
+  "tour_not_found": "Tour not found",
+  "tour_or_category_not_found": "Tour or category not found",
+  "tour_has_no_tour_time": "This tour has no tour time yet and cannot be published",
+  "tour_has_tour_times": "Cannot delete a tour that still has tour times — archive it instead"
+}

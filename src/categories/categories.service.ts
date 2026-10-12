@@ -117,6 +117,10 @@ export class CategoriesService {
     return { id: categoryId, name: dto.name };
   }
 
+  exists(categoryId: number): Promise<boolean> {
+    return this.categoriesRepository.exists({ where: { id: categoryId } });
+  }
+
   async remove(categoryId: number): Promise<void> {
     const result = await this.categoriesRepository.delete(categoryId);
     if (!result.affected) {
