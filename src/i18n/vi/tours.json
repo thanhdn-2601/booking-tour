@@ -1,0 +1,6 @@
+{
+  "tour_not_found": "Không tìm thấy tour",
+  "tour_or_category_not_found": "Không tìm thấy tour hoặc danh mục",
+  "tour_has_no_tour_time": "Tour chưa có lịch khởi hành nào nên không thể publish",
+  "tour_has_tour_times": "Không thể xoá tour đã có lịch khởi hành, hãy chuyển sang archived thay thế"
+}

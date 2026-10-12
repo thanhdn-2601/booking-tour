@@ -24,9 +24,9 @@ jobs:
 
       - run: npm ci
       - run: npm audit --audit-level=critical
-        # only fails on critical-severity advisories for now — pinning Nest 11 currently
-        # carries known high-severity transitive multer advisories with no non-breaking fix;
-        # raise this to --audit-level=high once the project moves to Nest 12
+        # only fails on critical-severity advisories for now — nestjs-i18n@<6 pulls in a
+        # high-severity transitive braces/chokidar advisory with no non-breaking fix;
+        # raise this to --audit-level=high once the project moves to nestjs-i18n@5+
       - run: npm run lint:check
       - run: npm run build
       - run: npm test
