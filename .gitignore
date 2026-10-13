@@ -29,3 +29,7 @@ npm-debug.log*
 
 # TypeScript v1 declaration files
 typings/
+
+# Uploaded files
+public/uploads/**
+!public/uploads/**/.gitkeep

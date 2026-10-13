@@ -1,14 +1,21 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { Booking } from '../bookings/booking.entity';
 import { CategoriesModule } from '../categories/categories.module';
-import { ToursService } from './tours.service';
+import { TourImagesService } from './tour-images.service';
+import { TourImage } from './tour-image.entity';
+import { TourTimesService } from './tour-times.service';
 import { TourTime } from './tour-time.entity';
 import { Tour } from './tour.entity';
+import { ToursService } from './tours.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Tour, TourTime]), CategoriesModule],
-  providers: [ToursService],
-  exports: [ToursService],
+  imports: [
+    TypeOrmModule.forFeature([Tour, TourTime, TourImage, Booking]),
+    CategoriesModule,
+  ],
+  providers: [ToursService, TourImagesService, TourTimesService],
+  exports: [ToursService, TourImagesService, TourTimesService],
 })
 export class ToursModule {}
