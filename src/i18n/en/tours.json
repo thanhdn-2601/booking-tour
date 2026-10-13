@@ -2,5 +2,10 @@
   "tour_not_found": "Tour not found",
   "tour_or_category_not_found": "Tour or category not found",
   "tour_has_no_tour_time": "This tour has no tour time yet and cannot be published",
-  "tour_has_tour_times": "Cannot delete a tour that still has tour times — archive it instead"
+  "tour_has_tour_times": "Cannot delete a tour that still has tour times — archive it instead",
+  "tour_or_image_not_found": "Tour or image not found",
+  "invalid_date_range": "The start date must be before the end date",
+  "tour_time_not_found": "Tour time not found",
+  "capacity_below_booked": "The new capacity cannot be less than the number of slots already booked",
+  "tour_time_has_booking": "Cannot delete a tour time that already has bookings — set its status to cancelled instead"
 }

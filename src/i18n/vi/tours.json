@@ -2,5 +2,10 @@
   "tour_not_found": "Không tìm thấy tour",
   "tour_or_category_not_found": "Không tìm thấy tour hoặc danh mục",
   "tour_has_no_tour_time": "Tour chưa có lịch khởi hành nào nên không thể publish",
-  "tour_has_tour_times": "Không thể xoá tour đã có lịch khởi hành, hãy chuyển sang archived thay thế"
+  "tour_has_tour_times": "Không thể xoá tour đã có lịch khởi hành, hãy chuyển sang archived thay thế",
+  "tour_or_image_not_found": "Không tìm thấy tour hoặc ảnh",
+  "invalid_date_range": "Ngày bắt đầu phải trước ngày kết thúc",
+  "tour_time_not_found": "Không tìm thấy lịch khởi hành",
+  "capacity_below_booked": "Sức chứa mới không được nhỏ hơn số chỗ đã đặt",
+  "tour_time_has_booking": "Không thể xoá lịch khởi hành đã có booking, hãy chuyển status sang cancelled thay thế"
 }

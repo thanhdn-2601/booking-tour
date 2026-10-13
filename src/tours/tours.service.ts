@@ -23,8 +23,8 @@ import { AdminTourListItemResponse } from './interfaces/admin-tour-list-item-res
 import { CreateTourResponse } from './interfaces/create-tour-response.interface';
 import { UpdateTourResponse } from './interfaces/update-tour-response.interface';
 import { UpdateTourStatusResponse } from './interfaces/update-tour-status-response.interface';
+import { TourImage } from './tour-image.entity';
 import { TourStatus } from './tour-status.enum';
-import { TourTime } from './tour-time.entity';
 import { Tour } from './tour.entity';
 
 @Injectable()
@@ -32,11 +32,15 @@ export class ToursService {
   constructor(
     @InjectRepository(Tour)
     private readonly toursRepository: Repository<Tour>,
-    @InjectRepository(TourTime)
-    private readonly tourTimesRepository: Repository<TourTime>,
+    @InjectRepository(TourImage)
+    private readonly tourImagesRepository: Repository<TourImage>,
     private readonly categoriesService: CategoriesService,
     private readonly i18n: I18nService,
   ) {}
+
+  exists(tourId: number): Promise<boolean> {
+    return this.toursRepository.exists({ where: { id: tourId } });
+  }
 
   async create(dto: CreateTourDto): Promise<CreateTourResponse> {
     const categoryExists = await this.categoriesService.exists(dto.categoryId);
@@ -156,13 +160,22 @@ export class ToursService {
         message: this.i18n.t('tours.tour_not_found'),
       });
     }
+    const images = await this.tourImagesRepository.find({
+      where: { tourId },
+      select: { id: true, imageUrl: true, sortOrder: true },
+      order: { sortOrder: 'ASC' },
+    });
     return {
       id: tour.id,
       category: tour.category,
       title: tour.title,
       description: tour.description,
       status: tour.status,
-      images: [],
+      images: images.map((image) => ({
+        id: image.id,
+        imageUrl: image.imageUrl,
+        sortOrder: image.sortOrder,
+      })),
     };
   }
 
@@ -209,33 +222,50 @@ export class ToursService {
     tourId: number,
     status: TourStatus,
   ): Promise<UpdateTourStatusResponse> {
-    const tour = await this.toursRepository.findOne({
-      where: { id: tourId },
-      select: { id: true },
+    const updatedAt = new Date();
+
+    if (status === TourStatus.PUBLISHED) {
+      // Tour times can be deleted (ADMIN-TIME-04), so the "has a tour time"
+      // check must be part of the same statement as the update — a separate
+      // check-then-act could race with a concurrent delete of the last one.
+      // UPDATE/DELETE via Repository.query() returns [rows, rowCount], not
+      // just the rows array — destructure it, don't check rows.length.
+      const [, affectedCount] = await this.toursRepository.query<
+        [{ id: number }[], number]
+      >(
+        `UPDATE tours SET status = $1, updated_at = $2
+         WHERE id = $3 AND EXISTS (SELECT 1 FROM tour_times WHERE tour_id = tours.id)
+         RETURNING id`,
+        [status, updatedAt, tourId],
+      );
+      if (affectedCount) {
+        return { id: tourId, status, updatedAt };
+      }
+      const exists = await this.toursRepository.exists({
+        where: { id: tourId },
+      });
+      if (!exists) {
+        throw new NotFoundException({
+          code: 'TOUR_NOT_FOUND',
+          message: this.i18n.t('tours.tour_not_found'),
+        });
+      }
+      throw new ConflictException({
+        code: 'TOUR_HAS_NO_TOUR_TIME',
+        message: this.i18n.t('tours.tour_has_no_tour_time'),
+      });
+    }
+
+    const result = await this.toursRepository.update(tourId, {
+      status,
+      updatedAt,
     });
-    if (!tour) {
+    if (!result.affected) {
       throw new NotFoundException({
         code: 'TOUR_NOT_FOUND',
         message: this.i18n.t('tours.tour_not_found'),
       });
     }
-
-    // No endpoint can remove a tour time yet, so a check-then-act here can't
-    // race with a concurrent delete — revisit if that ever changes.
-    if (status === TourStatus.PUBLISHED) {
-      const hasTourTimes = await this.tourTimesRepository.exists({
-        where: { tourId },
-      });
-      if (!hasTourTimes) {
-        throw new ConflictException({
-          code: 'TOUR_HAS_NO_TOUR_TIME',
-          message: this.i18n.t('tours.tour_has_no_tour_time'),
-        });
-      }
-    }
-
-    const updatedAt = new Date();
-    await this.toursRepository.update(tourId, { status, updatedAt });
     return { id: tourId, status, updatedAt };
   }
 

@@ -115,6 +115,18 @@ describe('Admin tours (e2e)', () => {
     return toursRepository.save(tour);
   }
 
+  async function createTourTime(tourId: number): Promise<TourTime> {
+    const tourTimesRepository = dataSource.getRepository(TourTime);
+    const tourTime = tourTimesRepository.create({
+      tourId,
+      startDate: '2026-10-01',
+      endDate: '2026-10-03',
+      price: 3500000,
+      maxCapacity: 20,
+    });
+    return tourTimesRepository.save(tourTime);
+  }
+
   describe('POST /api/v1/admin/tours', () => {
     it('rejects a non-admin user', async () => {
       const usersRepository = dataSource.getRepository(User);
@@ -188,9 +200,7 @@ describe('Admin tours (e2e)', () => {
       });
       await createTour({ title: 'Chưa có lịch' });
 
-      await dataSource
-        .getRepository(TourTime)
-        .save(dataSource.getRepository(TourTime).create({ tourId: tour.id }));
+      await createTourTime(tour.id);
 
       const res = await request(app.getHttpServer())
         .get('/api/v1/admin/tours')
@@ -217,9 +227,7 @@ describe('Admin tours (e2e)', () => {
       const adminToken = await createAdminAndLogin();
       await createTour({ title: 'Draft tour' });
       const tour = await createTour({ title: 'Published tour' });
-      await dataSource
-        .getRepository(TourTime)
-        .save(dataSource.getRepository(TourTime).create({ tourId: tour.id }));
+      await createTourTime(tour.id);
       await dataSource
         .getRepository(Tour)
         .update(tour.id, { status: TourStatus.PUBLISHED });
@@ -364,9 +372,7 @@ describe('Admin tours (e2e)', () => {
     it('publishes a tour that has a tour time', async () => {
       const adminToken = await createAdminAndLogin();
       const tour = await createTour();
-      await dataSource
-        .getRepository(TourTime)
-        .save(dataSource.getRepository(TourTime).create({ tourId: tour.id }));
+      await createTourTime(tour.id);
 
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/admin/tours/${tour.id}/status`)
@@ -391,9 +397,7 @@ describe('Admin tours (e2e)', () => {
     it('returns 409 when the tour still has tour times', async () => {
       const adminToken = await createAdminAndLogin();
       const tour = await createTour();
-      await dataSource
-        .getRepository(TourTime)
-        .save(dataSource.getRepository(TourTime).create({ tourId: tour.id }));
+      await createTourTime(tour.id);
 
       const res = await request(app.getHttpServer())
         .delete(`/api/v1/admin/tours/${tour.id}`)

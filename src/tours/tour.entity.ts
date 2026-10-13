@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 
 import { Category } from '../categories/category.entity';
+import { TourImage } from './tour-image.entity';
 import { TourStatus } from './tour-status.enum';
 import { TourTime } from './tour-time.entity';
 
@@ -40,6 +41,9 @@ export class Tour {
 
   @OneToMany(() => TourTime, (tourTime) => tourTime.tour)
   tourTimes: TourTime[];
+
+  @OneToMany(() => TourImage, (image) => image.tour)
+  images: TourImage[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

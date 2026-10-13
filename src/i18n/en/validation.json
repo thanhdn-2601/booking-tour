@@ -8,5 +8,8 @@
   "is_enum": "{property} is not a valid value",
   "is_int": "{property} must be an integer number",
   "min": "{property} must not be less than {constraints.0}",
-  "max": "{property} must not be greater than {constraints.0}"
+  "max": "{property} must not be greater than {constraints.0}",
+  "is_url": "{property} must be a valid URL",
+  "is_date_string": "{property} must be a valid date (YYYY-MM-DD)",
+  "is_positive": "{property} must be a positive number"
 }
