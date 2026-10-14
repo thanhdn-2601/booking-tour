@@ -5,7 +5,7 @@ import { i18nValidationMessage } from 'nestjs-i18n';
 export class CreateTourDto {
   @ApiProperty({ example: 1 })
   @IsInt({ message: i18nValidationMessage('validation.is_int') })
-  @IsPositive({ message: i18nValidationMessage('validation.min') })
+  @IsPositive({ message: i18nValidationMessage('validation.is_positive') })
   categoryId: number;
 
   @ApiProperty({ example: 'Đà Nẵng - Hội An' })

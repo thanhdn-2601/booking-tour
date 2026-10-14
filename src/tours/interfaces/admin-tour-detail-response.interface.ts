@@ -1,4 +1,5 @@
 import { TourStatus } from '../tour-status.enum';
+import { TourImageResponse } from './tour-image-response.interface';
 
 export interface AdminTourDetailResponse {
   id: number;
@@ -6,6 +7,5 @@ export interface AdminTourDetailResponse {
   title: string;
   description: string;
   status: TourStatus;
-  // Always empty until the tour-images feature exists.
-  images: unknown[];
+  images: TourImageResponse[];
 }

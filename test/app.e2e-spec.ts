@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -9,7 +9,7 @@ import { configureApp } from './../src/configure-app';
 import { truncateAllTables } from './utils/database-cleaner';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication<App>;
   let dataSource: DataSource;
 
   beforeEach(async () => {
@@ -17,7 +17,7 @@ describe('AppController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestExpressApplication<App>>();
     configureApp(app);
     await app.init();
     dataSource = app.get<DataSource>(getDataSourceToken());

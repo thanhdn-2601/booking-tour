@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -40,7 +40,7 @@ interface AdminUserListBody {
 }
 
 describe('Admin users (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication<App>;
   let dataSource: DataSource;
 
   const password = 'P@ssw0rd123';
@@ -50,7 +50,7 @@ describe('Admin users (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestExpressApplication<App>>();
     configureApp(app);
     await app.init();
     dataSource = app.get<DataSource>(getDataSourceToken());

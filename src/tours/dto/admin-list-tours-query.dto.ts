@@ -28,7 +28,7 @@ export class AdminListToursQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: i18nValidationMessage('validation.is_int') })
-  @IsPositive({ message: i18nValidationMessage('validation.min') })
+  @IsPositive({ message: i18nValidationMessage('validation.is_positive') })
   categoryId?: number;
 
   @ApiPropertyOptional({ enum: TourStatus })

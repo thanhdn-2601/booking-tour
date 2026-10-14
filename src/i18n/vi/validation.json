@@ -8,5 +8,8 @@
   "is_enum": "{property} không hợp lệ",
   "is_int": "{property} phải là số nguyên",
   "min": "{property} phải lớn hơn hoặc bằng {constraints.0}",
-  "max": "{property} phải nhỏ hơn hoặc bằng {constraints.0}"
+  "max": "{property} phải nhỏ hơn hoặc bằng {constraints.0}",
+  "is_url": "{property} phải là một URL hợp lệ",
+  "is_date_string": "{property} phải là ngày hợp lệ (YYYY-MM-DD)",
+  "is_positive": "{property} phải là số dương"
 }

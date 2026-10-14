@@ -4,16 +4,15 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { Booking } from '../bookings/booking.entity';
+import { TourTimeStatus } from './tour-time-status.enum';
 import { Tour } from './tour.entity';
 
-// Minimal stub ahead of the Tour Times feature — just enough to back
-// ADMIN-TOUR-05's "has no tour time" publish guard and ADMIN-TOUR-06's
-// ON DELETE RESTRICT. Expect this table to gain real columns (startDate,
-// endDate, price, maxCapacity, ...) once that feature is built.
 @Entity('tour_times')
 export class TourTime {
   @PrimaryGeneratedColumn()
@@ -25,6 +24,24 @@ export class TourTime {
   @ManyToOne(() => Tour, (tour) => tour.tourTimes, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'tour_id' })
   tour: Tour;
+
+  @Column({ name: 'start_date', type: 'date' })
+  startDate: string;
+
+  @Column({ name: 'end_date', type: 'date' })
+  endDate: string;
+
+  @Column({ type: 'int' })
+  price: number;
+
+  @Column({ name: 'max_capacity', type: 'int' })
+  maxCapacity: number;
+
+  @Column({ type: 'varchar', default: TourTimeStatus.OPEN })
+  status: TourTimeStatus;
+
+  @OneToMany(() => Booking, (booking) => booking.tourTime)
+  bookings: Booking[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
