@@ -1,0 +1,6 @@
+{
+  "booking_not_found": "Không tìm thấy booking",
+  "not_enough_slots": "Không đủ chỗ trống để xác nhận booking này",
+  "tour_time_not_open": "Lịch khởi hành này không mở để đặt chỗ",
+  "booking_cannot_be_cancelled": "Booking này không thể huỷ được nữa"
+}

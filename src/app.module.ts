@@ -8,8 +8,11 @@ import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { BookingsModule } from './bookings/bookings.module';
+import { CategoriesModule } from './categories/categories.module';
 import { envValidationSchema } from './config/env-validation.schema';
 import { DatabaseModule } from './database/database.module';
+import { ToursModule } from './tours/tours.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -30,6 +33,9 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     UsersModule,
     AuthModule,
+    CategoriesModule,
+    ToursModule,
+    BookingsModule,
     AdminModule,
   ],
   controllers: [AppController],

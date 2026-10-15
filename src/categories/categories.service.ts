@@ -12,8 +12,10 @@ import { PaginatedResponse } from '../common/interfaces/paginated-response.inter
 import { Category } from './category.entity';
 import { AdminListCategoriesQueryDto } from './dto/admin-list-categories-query.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { ListCategoriesQueryDto } from './dto/list-categories-query.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { AdminCategoryListItemResponse } from './interfaces/admin-category-list-item-response.interface';
+import { CategoryListItemResponse } from './interfaces/category-list-item-response.interface';
 import { CategoryResponse } from './interfaces/category-response.interface';
 import { UpdateCategoryResponse } from './interfaces/update-category-response.interface';
 
@@ -79,6 +81,46 @@ export class CategoriesService {
         id: row.id,
         name: row.name,
         tourCount: Number(row.tourCount),
+      })),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
+  }
+
+  async findAllPublic(
+    query: ListCategoriesQueryDto,
+  ): Promise<PaginatedResponse<CategoryListItemResponse>> {
+    const { search, page, pageSize } = query;
+
+    const countQuery = this.categoriesRepository.createQueryBuilder('category');
+    const listQuery = this.categoriesRepository
+      .createQueryBuilder('category')
+      .select(['category.id', 'category.name', 'category.description'])
+      .orderBy('category.id', 'ASC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+    if (search) {
+      countQuery.andWhere('category.name ILIKE :search', {
+        search: `%${search}%`,
+      });
+      listQuery.andWhere('category.name ILIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+
+    const [total, rows] = await Promise.all([
+      countQuery.getCount(),
+      listQuery.getMany(),
+    ]);
+    return {
+      items: rows.map((category) => ({
+        id: category.id,
+        name: category.name,
+        description: category.description,
       })),
       pagination: {
         page,

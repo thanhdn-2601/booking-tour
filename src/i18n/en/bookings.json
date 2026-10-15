@@ -1,0 +1,6 @@
+{
+  "booking_not_found": "Booking not found",
+  "not_enough_slots": "There are not enough slots left to confirm this booking",
+  "tour_time_not_open": "This tour time is not open for booking",
+  "booking_cannot_be_cancelled": "This booking can no longer be cancelled"
+}
