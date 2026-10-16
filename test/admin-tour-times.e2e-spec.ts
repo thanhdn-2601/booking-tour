@@ -61,6 +61,7 @@ describe('Admin tour times (e2e)', () => {
     configureApp(app);
     await app.init();
     dataSource = app.get<DataSource>(getDataSourceToken());
+    customerId = undefined;
   });
 
   async function createAdminAndLogin(): Promise<string> {
@@ -108,14 +109,40 @@ describe('Admin tour times (e2e)', () => {
     return tourTimesRepository.save(tourTime);
   }
 
+  let customerId: number | undefined;
+
+  async function getOrCreateCustomerId(): Promise<number> {
+    if (customerId !== undefined) return customerId;
+    const usersRepository = dataSource.getRepository(User);
+    const customer = await usersRepository.save(
+      usersRepository.create({
+        email: 'customer@example.com',
+        password: await bcrypt.hash(password, 10),
+        fullName: 'Customer',
+        phone: '0911111111',
+        status: UserStatus.ACTIVE,
+        role: UserRole.USER,
+      }),
+    );
+    customerId = customer.id;
+    return customerId;
+  }
+
   async function createBooking(
     tourTimeId: number,
     numberOfSlots: number,
     status: BookingStatus = BookingStatus.CONFIRMED,
   ): Promise<Booking> {
     const bookingsRepository = dataSource.getRepository(Booking);
+    const userId = await getOrCreateCustomerId();
     return bookingsRepository.save(
-      bookingsRepository.create({ tourTimeId, numberOfSlots, status }),
+      bookingsRepository.create({
+        tourTimeId,
+        userId,
+        numberOfSlots,
+        totalPrice: 0,
+        status,
+      }),
     );
   }
 

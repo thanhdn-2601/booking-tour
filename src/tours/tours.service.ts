@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -17,14 +18,18 @@ import { PaginatedResponse } from '../common/interfaces/paginated-response.inter
 import { isForeignKeyViolation } from '../common/postgres-errors';
 import { AdminListToursQueryDto } from './dto/admin-list-tours-query.dto';
 import { CreateTourDto } from './dto/create-tour.dto';
+import { ListToursQueryDto } from './dto/list-tours-query.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
 import { AdminTourDetailResponse } from './interfaces/admin-tour-detail-response.interface';
 import { AdminTourListItemResponse } from './interfaces/admin-tour-list-item-response.interface';
 import { CreateTourResponse } from './interfaces/create-tour-response.interface';
+import { TourDetailResponse } from './interfaces/tour-detail-response.interface';
+import { TourListItemResponse } from './interfaces/tour-list-item-response.interface';
 import { UpdateTourResponse } from './interfaces/update-tour-response.interface';
 import { UpdateTourStatusResponse } from './interfaces/update-tour-status-response.interface';
 import { TourImage } from './tour-image.entity';
 import { TourStatus } from './tour-status.enum';
+import { TourTimeStatus } from './tour-time-status.enum';
 import { Tour } from './tour.entity';
 
 @Injectable()
@@ -40,6 +45,12 @@ export class ToursService {
 
   exists(tourId: number): Promise<boolean> {
     return this.toursRepository.exists({ where: { id: tourId } });
+  }
+
+  existsPublished(tourId: number): Promise<boolean> {
+    return this.toursRepository.exists({
+      where: { id: tourId, status: TourStatus.PUBLISHED },
+    });
   }
 
   async create(dto: CreateTourDto): Promise<CreateTourResponse> {
@@ -176,6 +187,172 @@ export class ToursService {
         imageUrl: image.imageUrl,
         sortOrder: image.sortOrder,
       })),
+    };
+  }
+
+  async findAllPublic(
+    query: ListToursQueryDto,
+  ): Promise<PaginatedResponse<TourListItemResponse>> {
+    if (query.startDate && query.endDate && query.startDate >= query.endDate) {
+      throw new BadRequestException({
+        code: 'INVALID_DATE_RANGE',
+        message: this.i18n.t('tours.invalid_date_range'),
+      });
+    }
+
+    const {
+      keyword,
+      categoryId,
+      startDate,
+      endDate,
+      minPrice,
+      maxPrice,
+      page,
+      pageSize,
+    } = query;
+
+    const joinConditions = [
+      'tourTime.status = :openStatus',
+      'tourTime.startDate >= CURRENT_DATE',
+    ];
+    const joinParams: Record<string, string | number> = {
+      openStatus: TourTimeStatus.OPEN,
+    };
+    if (startDate) {
+      joinConditions.push('tourTime.startDate >= :startDate');
+      joinParams.startDate = startDate;
+    }
+    if (endDate) {
+      joinConditions.push('tourTime.startDate <= :endDate');
+      joinParams.endDate = endDate;
+    }
+    if (minPrice !== undefined) {
+      joinConditions.push('tourTime.price >= :minPrice');
+      joinParams.minPrice = minPrice;
+    }
+    if (maxPrice !== undefined) {
+      joinConditions.push('tourTime.price <= :maxPrice');
+      joinParams.maxPrice = maxPrice;
+    }
+    const joinCondition = joinConditions.join(' AND ');
+
+    const applyFilters = (qb: SelectQueryBuilder<Tour>): void => {
+      qb.innerJoin(
+        'tour.tourTimes',
+        'tourTime',
+        joinCondition,
+        joinParams,
+      ).andWhere('tour.status = :publishedStatus', {
+        publishedStatus: TourStatus.PUBLISHED,
+      });
+      if (keyword) {
+        qb.andWhere('tour.title ILIKE :keyword', { keyword: `%${keyword}%` });
+      }
+      if (categoryId) {
+        qb.andWhere('tour.categoryId = :categoryId', { categoryId });
+      }
+    };
+
+    const countQuery = this.toursRepository
+      .createQueryBuilder('tour')
+      .select('COUNT(DISTINCT tour.id)', 'count');
+    applyFilters(countQuery);
+
+    const listQuery = this.toursRepository
+      .createQueryBuilder('tour')
+      .leftJoin('tour.category', 'category')
+      .select('tour.id', 'id')
+      .addSelect('tour.title', 'title')
+      .addSelect('category.name', 'categoryName')
+      .addSelect('MIN(tourTime.price)', 'priceFrom')
+      .addSelect(
+        "to_char(MIN(tourTime.startDate), 'YYYY-MM-DD')",
+        'nearestStartDate',
+      )
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select('image.imageUrl')
+            .from(TourImage, 'image')
+            .where('image.tourId = tour.id')
+            .orderBy('image.sortOrder', 'ASC')
+            .limit(1),
+        'thumbnailUrl',
+      )
+      .groupBy('tour.id')
+      .addGroupBy('category.name')
+      .orderBy('tour.id', 'ASC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+    applyFilters(listQuery);
+
+    const [countRow, rows] = await Promise.all([
+      countQuery.getRawOne() as Promise<{ count: string }>,
+      listQuery.getRawMany<{
+        id: number;
+        title: string;
+        categoryName: string | null;
+        priceFrom: number;
+        nearestStartDate: string;
+        thumbnailUrl: string | null;
+      }>(),
+    ]);
+    const total = Number(countRow.count);
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        categoryName: row.categoryName,
+        thumbnailUrl: row.thumbnailUrl,
+        priceFrom: Number(row.priceFrom),
+        nearestStartDate: row.nearestStartDate,
+      })),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
+  }
+
+  async getByIdPublic(tourId: number): Promise<TourDetailResponse> {
+    const tour = await this.toursRepository.findOne({
+      where: { id: tourId, status: TourStatus.PUBLISHED },
+      relations: { category: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        category: { id: true, name: true },
+      },
+    });
+    if (!tour) {
+      throw new NotFoundException({
+        code: 'TOUR_NOT_FOUND',
+        message: this.i18n.t('tours.tour_not_found'),
+      });
+    }
+
+    const images = await this.tourImagesRepository.find({
+      where: { tourId },
+      select: { id: true, imageUrl: true, sortOrder: true },
+      order: { sortOrder: 'ASC' },
+    });
+
+    return {
+      id: tour.id,
+      category: tour.category,
+      title: tour.title,
+      description: tour.description,
+      images: images.map((image) => ({
+        id: image.id,
+        imageUrl: image.imageUrl,
+        sortOrder: image.sortOrder,
+      })),
+      // Placeholder until the review feature (REV-01 / ADMIN-REV-*) exists.
+      ratingAverage: 0,
+      ratingCount: 0,
     };
   }
 

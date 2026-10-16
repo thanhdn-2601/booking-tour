@@ -8,6 +8,7 @@ import { TourImage } from './tour-image.entity';
 import { TourTimesService } from './tour-times.service';
 import { TourTime } from './tour-time.entity';
 import { Tour } from './tour.entity';
+import { ToursController } from './tours.controller';
 import { ToursService } from './tours.service';
 
 @Module({
@@ -15,6 +16,7 @@ import { ToursService } from './tours.service';
     TypeOrmModule.forFeature([Tour, TourTime, TourImage, Booking]),
     CategoriesModule,
   ],
+  controllers: [ToursController],
   providers: [ToursService, TourImagesService, TourTimesService],
   exports: [ToursService, TourImagesService, TourTimesService],
 })
