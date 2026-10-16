@@ -1,6 +1,8 @@
 {
   "booking_not_found": "Không tìm thấy booking",
+  "invalid_booking_transition": "Không thể chuyển trạng thái booking từ trạng thái hiện tại",
   "not_enough_slots": "Không đủ chỗ trống để xác nhận booking này",
+  "reason_required": "Vui lòng nhập lý do",
   "tour_time_not_open": "Lịch khởi hành này không mở để đặt chỗ",
   "booking_cannot_be_cancelled": "Booking này không thể huỷ được nữa"
 }
