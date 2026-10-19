@@ -12,6 +12,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { CategoriesModule } from './categories/categories.module';
 import { envValidationSchema } from './config/env-validation.schema';
 import { DatabaseModule } from './database/database.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { ToursModule } from './tours/tours.module';
 import { UsersModule } from './users/users.module';
 
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     CategoriesModule,
     ToursModule,
     BookingsModule,
+    ReviewsModule,
     AdminModule,
   ],
   controllers: [AppController],

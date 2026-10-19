@@ -1,0 +1,6 @@
+{
+  "booking_not_completed": "Booking này chưa hoàn thành",
+  "review_already_exists": "Booking này đã có đánh giá",
+  "review_not_found": "Không tìm thấy đánh giá",
+  "invalid_review_transition": "Không thể chuyển trạng thái đánh giá từ trạng thái hiện tại"
+}

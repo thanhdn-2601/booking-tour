@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Booking } from '../bookings/booking.entity';
 import { CategoriesModule } from '../categories/categories.module';
+import { Review } from '../reviews/review.entity';
 import { TourImagesService } from './tour-images.service';
 import { TourImage } from './tour-image.entity';
 import { TourTimesService } from './tour-times.service';
@@ -13,7 +14,7 @@ import { ToursService } from './tours.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Tour, TourTime, TourImage, Booking]),
+    TypeOrmModule.forFeature([Tour, TourTime, TourImage, Booking, Review]),
     CategoriesModule,
   ],
   controllers: [ToursController],

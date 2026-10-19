@@ -16,6 +16,8 @@ import {
 import { CategoriesService } from '../categories/categories.service';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 import { isForeignKeyViolation } from '../common/postgres-errors';
+import { Review } from '../reviews/review.entity';
+import { ReviewStatus } from '../reviews/review-status.enum';
 import { AdminListToursQueryDto } from './dto/admin-list-tours-query.dto';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { ListToursQueryDto } from './dto/list-tours-query.dto';
@@ -39,6 +41,8 @@ export class ToursService {
     private readonly toursRepository: Repository<Tour>,
     @InjectRepository(TourImage)
     private readonly tourImagesRepository: Repository<TourImage>,
+    @InjectRepository(Review)
+    private readonly reviewsRepository: Repository<Review>,
     private readonly categoriesService: CategoriesService,
     private readonly i18n: I18nService,
   ) {}
@@ -340,6 +344,16 @@ export class ToursService {
       order: { sortOrder: 'ASC' },
     });
 
+    const ratingRow = (await this.reviewsRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.booking', 'booking')
+      .innerJoin('booking.tourTime', 'tourTime')
+      .select('ROUND(AVG(review.rating)::numeric, 1)', 'average')
+      .addSelect('COUNT(review.id)', 'count')
+      .where('tourTime.tourId = :tourId', { tourId })
+      .andWhere('review.status = :status', { status: ReviewStatus.APPROVED })
+      .getRawOne()) as { average: string | null; count: string };
+
     return {
       id: tour.id,
       category: tour.category,
@@ -350,9 +364,8 @@ export class ToursService {
         imageUrl: image.imageUrl,
         sortOrder: image.sortOrder,
       })),
-      // Placeholder until the review feature (REV-01 / ADMIN-REV-*) exists.
-      ratingAverage: 0,
-      ratingCount: 0,
+      ratingAverage: ratingRow.average ? Number(ratingRow.average) : 0,
+      ratingCount: Number(ratingRow.count),
     };
   }
 
