@@ -10,6 +10,8 @@ import { Booking } from './../src/bookings/booking.entity';
 import { BookingStatus } from './../src/bookings/booking-status.enum';
 import { Category } from './../src/categories/category.entity';
 import { configureApp } from './../src/configure-app';
+import { Review } from './../src/reviews/review.entity';
+import { ReviewStatus } from './../src/reviews/review-status.enum';
 import { TourImage } from './../src/tours/tour-image.entity';
 import { TourStatus } from './../src/tours/tour-status.enum';
 import { TourTimeStatus } from './../src/tours/tour-time-status.enum';
@@ -233,7 +235,7 @@ describe('Tours (e2e)', () => {
       expect((res.body as ErrorBody).code).toBe('TOUR_NOT_FOUND');
     });
 
-    it('returns the tour detail with images and a rating placeholder', async () => {
+    it('returns the tour detail with images and no approved reviews', async () => {
       const category = await createCategory();
       const tour = await createTour({ categoryId: category.id });
       await createTourImage(tour.id);
@@ -251,6 +253,66 @@ describe('Tours (e2e)', () => {
         ratingCount: 0,
       });
       expect(body.images).toHaveLength(1);
+    });
+
+    it('computes ratingAverage/ratingCount from approved reviews only', async () => {
+      const tour = await createTour();
+      const tourTime = await createTourTime(tour.id);
+      const usersRepository = dataSource.getRepository(User);
+      const customer = await usersRepository.save(
+        usersRepository.create({
+          email: 'customer@example.com',
+          password: 'hashed',
+          fullName: 'Customer',
+          phone: '0911111111',
+          status: UserStatus.ACTIVE,
+          role: UserRole.USER,
+        }),
+      );
+      const bookingsRepository = dataSource.getRepository(Booking);
+      const approvedBooking = await bookingsRepository.save(
+        bookingsRepository.create({
+          tourTimeId: tourTime.id,
+          userId: customer.id,
+          numberOfSlots: 1,
+          totalPrice: 0,
+          status: BookingStatus.COMPLETED,
+        }),
+      );
+      const pendingBooking = await bookingsRepository.save(
+        bookingsRepository.create({
+          tourTimeId: tourTime.id,
+          userId: customer.id,
+          numberOfSlots: 1,
+          totalPrice: 0,
+          status: BookingStatus.COMPLETED,
+        }),
+      );
+      const reviewsRepository = dataSource.getRepository(Review);
+      await reviewsRepository.save(
+        reviewsRepository.create({
+          bookingId: approvedBooking.id,
+          rating: 4,
+          comment: 'Tốt',
+          status: ReviewStatus.APPROVED,
+        }),
+      );
+      await reviewsRepository.save(
+        reviewsRepository.create({
+          bookingId: pendingBooking.id,
+          rating: 1,
+          comment: 'Chưa duyệt, không nên tính',
+          status: ReviewStatus.PENDING,
+        }),
+      );
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/tours/${tour.id}`)
+        .expect(200);
+
+      const body = res.body as TourDetailBody;
+      expect(body.ratingAverage).toBe(4);
+      expect(body.ratingCount).toBe(1);
     });
   });
 

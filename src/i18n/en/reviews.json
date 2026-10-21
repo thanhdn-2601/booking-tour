@@ -1,0 +1,6 @@
+{
+  "booking_not_completed": "This booking is not completed yet",
+  "review_already_exists": "A review already exists for this booking",
+  "review_not_found": "Review not found",
+  "invalid_review_transition": "This review cannot transition from its current status"
+}
