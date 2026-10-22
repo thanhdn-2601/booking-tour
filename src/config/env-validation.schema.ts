@@ -16,4 +16,11 @@ export const envValidationSchema = Joi.object({
   JWT_ACCESS_TOKEN_TTL_SECONDS: Joi.number().integer().positive().required(),
   REFRESH_TOKEN_TTL_DAYS: Joi.number().integer().positive().required(),
   ACTIVATION_TOKEN_TTL_HOURS: Joi.number().integer().positive().required(),
+
+  REDIS_HOST: Joi.string().required(),
+  REDIS_PORT: Joi.number().required(),
+
+  MAIL_HOST: Joi.string().required(),
+  MAIL_PORT: Joi.number().required(),
+  MAIL_FROM: Joi.string().required(),
 });

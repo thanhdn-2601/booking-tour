@@ -3,13 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
 import {
   DataSource,
@@ -21,6 +22,7 @@ import {
 
 import { isUniqueViolation } from '../common/postgres-errors';
 import { ACTIVATION_TOKEN_BYTES, REFRESH_TOKEN_BYTES } from './auth.constants';
+import { RedisService } from '../redis/redis.service';
 import { User } from '../users/user.entity';
 import { UserStatus } from '../users/user-status.enum';
 import { UsersService } from '../users/users.service';
@@ -36,6 +38,7 @@ import { PASSWORD_SALT_ROUNDS } from './password.constants';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private dummyPasswordHash: Promise<string> | undefined;
 
   constructor(
@@ -46,6 +49,7 @@ export class AuthService {
     @InjectRepository(UserAuthSession)
     private readonly sessionsRepository: Repository<UserAuthSession>,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly redisService: RedisService,
   ) {}
 
   async register(dto: RegisterDto): Promise<RegisterResponse> {
@@ -231,9 +235,27 @@ export class AuthService {
     return outcome.tokens;
   }
 
-  async logout(userId: number, refreshToken?: string): Promise<void> {
-    if (!refreshToken) return;
+  async logout(
+    userId: number,
+    accessToken: string | undefined,
+    refreshToken: string | undefined,
+  ): Promise<void> {
+    if (accessToken) {
+      const payload = this.jwtService.decode<JwtPayload>(accessToken);
+      if (payload?.jti && payload.exp) {
+        const ttlSeconds = payload.exp - Math.floor(Date.now() / 1000);
+        try {
+          await this.redisService.blacklistToken(payload.jti, ttlSeconds);
+        } catch (error) {
+          this.logger.error(
+            `Failed to blacklist access token for user ${userId} on logout`,
+            error instanceof Error ? error.stack : error,
+          );
+        }
+      }
+    }
 
+    if (!refreshToken) return;
     const refreshTokenHash = this.hashToken(refreshToken);
     await this.sessionsRepository.update(
       { userId, refreshTokenHash, revokedAt: IsNull() },
@@ -261,7 +283,7 @@ export class AuthService {
     const expiresIn = this.configService.getOrThrow<number>(
       'JWT_ACCESS_TOKEN_TTL_SECONDS',
     );
-    const payload: JwtPayload = { sub: user.id };
+    const payload: JwtPayload = { sub: user.id, jti: randomUUID() };
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: `${expiresIn}s`,
     });

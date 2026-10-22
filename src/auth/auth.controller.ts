@@ -13,6 +13,7 @@ import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
+import { CurrentAccessToken } from './decorators/current-access-token.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RefreshTokenCookie } from './decorators/refresh-token-cookie.decorator';
 import { ActivateQueryDto } from './dto/activate-query.dto';
@@ -70,8 +71,9 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(
     @CurrentUser() user: User,
+    @CurrentAccessToken() accessToken: string | undefined,
     @RefreshTokenCookie() refreshToken: string | undefined,
   ): Promise<void> {
-    return this.authService.logout(user.id, refreshToken);
+    return this.authService.logout(user.id, accessToken, refreshToken);
   }
 }

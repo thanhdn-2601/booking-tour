@@ -12,5 +12,22 @@ services:
     volumes:
       - tour_booking_pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: tour_booking_redis
+    restart: unless-stopped
+    # Mapped to 6380 (not the default 6379) so it doesn't clash with
+    # nestjs_tutorial_redis if both projects run side by side.
+    ports:
+      - '6380:6379'
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: tour_booking_mailhog
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI — view captured mail at http://localhost:8025
+
 volumes:
   tour_booking_pgdata:
