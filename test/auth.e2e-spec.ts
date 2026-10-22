@@ -310,6 +310,31 @@ describe('Auth (e2e)', () => {
       expect(sessions[0].revoked_at).not.toBeNull();
     });
 
+    it('blacklists the access token so it cannot be reused after logout', async () => {
+      await createUser();
+
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: 'user@example.com', password })
+        .expect(200);
+      const { accessToken } = loginRes.body as LoginBody;
+
+      await request(app.getHttpServer())
+        .get('/api/v1/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/logout')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .get('/api/v1/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401);
+    });
+
     it('rejects an access token whose user has since been deactivated', async () => {
       const user = await createUser();
 

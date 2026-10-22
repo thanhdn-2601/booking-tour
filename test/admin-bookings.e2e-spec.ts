@@ -66,6 +66,38 @@ interface UpdateStatusBody {
   updatedAt: string;
 }
 
+interface MailHogMessage {
+  To: { Mailbox: string; Domain: string }[];
+  Content: { Headers: { Subject?: string[] }; Body: string };
+}
+
+interface MailHogListResponse {
+  items: MailHogMessage[];
+}
+
+// MailHog's web API always runs 7000 above the SMTP port in this project's
+// docker-compose/CI setup (1025 -> 8025, 1125 -> 8125).
+const mailHogApiBase = `http://localhost:${Number(process.env.MAIL_PORT) + 7000}`;
+
+async function clearMailbox(): Promise<void> {
+  await fetch(`${mailHogApiBase}/api/v1/messages`, { method: 'DELETE' });
+}
+
+async function findMailTo(
+  email: string,
+): Promise<{ subject: string; body: string } | undefined> {
+  const res = await fetch(`${mailHogApiBase}/api/v2/messages?limit=50`);
+  const body = (await res.json()) as MailHogListResponse;
+  const match = body.items.find((message) =>
+    message.To.some((to) => `${to.Mailbox}@${to.Domain}` === email),
+  );
+  if (!match) return undefined;
+  return {
+    subject: match.Content.Headers.Subject?.[0] ?? '',
+    body: match.Content.Body,
+  };
+}
+
 describe('Admin bookings (e2e)', () => {
   let app: NestExpressApplication<App>;
   let dataSource: DataSource;
@@ -81,6 +113,7 @@ describe('Admin bookings (e2e)', () => {
     configureApp(app);
     await app.init();
     dataSource = app.get<DataSource>(getDataSourceToken());
+    await clearMailbox();
   });
 
   async function createAdminAndLogin(): Promise<string> {
@@ -374,6 +407,10 @@ describe('Admin bookings (e2e)', () => {
         toStatus: 'confirmed',
         actorType: 'admin',
       });
+
+      const mail = await findMailTo(customer.email);
+      expect(mail?.subject).toContain(String(booking.id));
+      expect(mail?.body).toContain('confirmed');
     });
   });
 
@@ -441,6 +478,10 @@ describe('Admin bookings (e2e)', () => {
         reason: 'Tour đã hết chỗ',
         actorType: 'admin',
       });
+
+      const mail = await findMailTo(customer.email);
+      expect(mail?.subject).toContain(String(booking.id));
+      expect(mail?.body).toContain('rejected');
     });
   });
 
@@ -464,6 +505,10 @@ describe('Admin bookings (e2e)', () => {
         id: booking.id,
         status: 'cancelled_by_admin',
       });
+
+      const mail = await findMailTo(customer.email);
+      expect(mail?.subject).toContain(String(booking.id));
+      expect(mail?.body).toContain('cancelled');
     });
 
     it('returns 409 when the booking is already cancelled', async () => {

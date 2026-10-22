@@ -1,0 +1,8 @@
+{
+  "booking_confirmed_subject": "Booking #{id} của bạn đã được xác nhận",
+  "booking_confirmed_body": "Booking cho tour \"{tourTitle}\" của bạn đã được xác nhận.",
+  "booking_rejected_subject": "Booking #{id} của bạn đã bị từ chối",
+  "booking_rejected_body": "Booking cho tour \"{tourTitle}\" của bạn đã bị từ chối. Lý do: {reason}",
+  "booking_cancelled_subject": "Booking #{id} của bạn đã bị huỷ",
+  "booking_cancelled_body": "Booking cho tour \"{tourTitle}\" của bạn đã bị huỷ. Lý do: {reason}"
+}

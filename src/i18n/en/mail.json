@@ -1,0 +1,8 @@
+{
+  "booking_confirmed_subject": "Your booking #{id} has been confirmed",
+  "booking_confirmed_body": "Your booking for \"{tourTitle}\" has been confirmed.",
+  "booking_rejected_subject": "Your booking #{id} has been rejected",
+  "booking_rejected_body": "Your booking for \"{tourTitle}\" has been rejected. Reason: {reason}",
+  "booking_cancelled_subject": "Your booking #{id} has been cancelled",
+  "booking_cancelled_body": "Your booking for \"{tourTitle}\" has been cancelled. Reason: {reason}"
+}

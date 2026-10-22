@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
@@ -9,8 +10,10 @@ import { I18nService } from 'nestjs-i18n';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
+import { MailService } from '../mail/mail.service';
 import { TourTime } from '../tours/tour-time.entity';
 import { ActorType } from './actor-type.enum';
+import { BOOKING_MAIL_TEMPLATE_KEY } from './booking.constants';
 import { BookingStatusHistory } from './booking-status-history.entity';
 import { BookingStatus } from './booking-status.enum';
 import { Booking } from './booking.entity';
@@ -22,6 +25,8 @@ import { UpdateBookingStatusResponse } from './interfaces/update-booking-status-
 
 @Injectable()
 export class AdminBookingsService {
+  private readonly logger = new Logger(AdminBookingsService.name);
+
   constructor(
     @InjectRepository(Booking)
     private readonly bookingsRepository: Repository<Booking>,
@@ -29,6 +34,7 @@ export class AdminBookingsService {
     private readonly historiesRepository: Repository<BookingStatusHistory>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly i18n: I18nService,
+    private readonly mailService: MailService,
   ) {}
 
   async findAllForAdmin(
@@ -209,6 +215,11 @@ export class AdminBookingsService {
         message: this.i18n.t('bookings.not_enough_slots'),
       });
     }
+    await this.notifyBookingStatusChange(
+      bookingId,
+      BookingStatus.CONFIRMED,
+      null,
+    );
     return {
       id: bookingId,
       status: BookingStatus.CONFIRMED,
@@ -232,6 +243,7 @@ export class AdminBookingsService {
       bookingId,
       BookingStatus.REJECTED,
       outcome,
+      reason,
     );
   }
 
@@ -251,6 +263,7 @@ export class AdminBookingsService {
       bookingId,
       BookingStatus.CANCELLED_BY_ADMIN,
       outcome,
+      reason,
     );
   }
 
@@ -302,11 +315,12 @@ export class AdminBookingsService {
     );
   }
 
-  private toUpdateStatusResponseOrThrow(
+  private async toUpdateStatusResponseOrThrow(
     bookingId: number,
     status: BookingStatus,
     outcome: TransitionOutcome,
-  ): UpdateBookingStatusResponse {
+    reason: string,
+  ): Promise<UpdateBookingStatusResponse> {
     if (outcome.kind === 'not_found') {
       throw new NotFoundException({
         code: 'BOOKING_NOT_FOUND',
@@ -326,6 +340,45 @@ export class AdminBookingsService {
         message: this.i18n.t('bookings.not_enough_slots'),
       });
     }
+    await this.notifyBookingStatusChange(bookingId, status, reason);
     return { id: bookingId, status, updatedAt: outcome.updatedAt };
+  }
+
+  private async notifyBookingStatusChange(
+    bookingId: number,
+    status: BookingStatus,
+    reason: string | null,
+  ): Promise<void> {
+    const templateKey = BOOKING_MAIL_TEMPLATE_KEY[status];
+    if (!templateKey) return;
+
+    const booking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      relations: { user: true, tourTime: { tour: true } },
+      select: {
+        id: true,
+        user: { id: true, email: true },
+        tourTime: { id: true, tour: { id: true, title: true } },
+      },
+    });
+    if (!booking) return;
+
+    try {
+      await this.mailService.send(
+        booking.user.email,
+        this.i18n.t(`mail.${templateKey}_subject`, { args: { id: bookingId } }),
+        this.i18n.t(`mail.${templateKey}_body`, {
+          args: {
+            tourTitle: booking.tourTime.tour.title,
+            reason: reason ?? '',
+          },
+        }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send booking status email for booking ${bookingId}`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
   }
 }
