@@ -28,6 +28,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CreateTourImageDto } from '../tours/dto/create-tour-image.dto';
 import { UpdateTourImageDto } from '../tours/dto/update-tour-image.dto';
+import { RemoveUploadedFileOnErrorInterceptor } from '../tours/interceptors/remove-uploaded-file-on-error.interceptor';
 import { TourImageListResponse } from '../tours/interfaces/tour-image-list-response.interface';
 import { TourImageResponse } from '../tours/interfaces/tour-image-response.interface';
 import { UpdateTourImageResponse } from '../tours/interfaces/update-tour-image-response.interface';
@@ -61,7 +62,10 @@ export class AdminTourImagesController {
   })
   @Post()
   @UseFilters(MulterExceptionFilter)
-  @UseInterceptors(FileInterceptor('file', tourImageUploadOptions))
+  @UseInterceptors(
+    FileInterceptor('file', tourImageUploadOptions),
+    RemoveUploadedFileOnErrorInterceptor,
+  )
   create(
     @Param('tourId', ParseIntPipe) tourId: number,
     @UploadedFile(tourImageValidationPipe) file: Express.Multer.File,

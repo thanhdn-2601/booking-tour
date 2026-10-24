@@ -14,6 +14,7 @@ import { AdminTourTimesController } from './admin-tour-times.controller';
 import { AdminToursController } from './admin-tours.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminUsersService } from './admin-users.service';
+import { RemoveUploadedFileOnErrorInterceptor } from '../tours/interceptors/remove-uploaded-file-on-error.interceptor';
 
 @Module({
   imports: [
@@ -33,6 +34,6 @@ import { AdminUsersService } from './admin-users.service';
     AdminBookingsController,
     AdminReviewsController,
   ],
-  providers: [AdminUsersService],
+  providers: [AdminUsersService, RemoveUploadedFileOnErrorInterceptor],
 })
 export class AdminModule {}

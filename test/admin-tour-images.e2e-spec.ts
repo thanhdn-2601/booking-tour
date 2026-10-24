@@ -166,6 +166,12 @@ describe('Admin tour images (e2e)', () => {
         .expect(400);
 
       expect((res.body as ErrorBody).code).toBe('VALIDATION_ERROR');
+
+      // The mime-type check runs as a pipe, after Multer has already
+      // written the file but before the handler's own try/catch — must
+      // still be cleaned up, not left orphaned on disk.
+      const files = readdirSync(join(PUBLIC_DIR, 'uploads/tours'));
+      expect(files.filter((f) => f !== '.gitkeep')).toHaveLength(0);
     });
 
     it('rejects an oversized file', async () => {
