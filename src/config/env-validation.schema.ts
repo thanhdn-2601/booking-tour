@@ -17,6 +17,10 @@ export const envValidationSchema = Joi.object({
   REFRESH_TOKEN_TTL_DAYS: Joi.number().integer().positive().required(),
   ACTIVATION_TOKEN_TTL_HOURS: Joi.number().integer().positive().required(),
 
+  GOOGLE_CLIENT_ID: Joi.string().required(),
+  GOOGLE_CLIENT_SECRET: Joi.string().required(),
+  GOOGLE_CALLBACK_URL: Joi.string().required(),
+
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().required(),
 

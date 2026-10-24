@@ -7,15 +7,19 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AuthIdentity } from './entities/auth-identity.entity';
 import { UserAuthSession } from './entities/user-auth-session.entity';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GoogleCallbackAuthGuard } from './guards/google-callback-auth.guard';
 import { ClearRefreshTokenCookieInterceptor } from './interceptors/clear-refresh-token-cookie.interceptor';
 import { RefreshTokenCookieInterceptor } from './interceptors/refresh-token-cookie.interceptor';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([UserAuthSession]),
+    TypeOrmModule.forFeature([UserAuthSession, AuthIdentity]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -29,6 +33,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [
     AuthService,
     JwtStrategy,
+    GoogleStrategy,
+    GoogleAuthGuard,
+    GoogleCallbackAuthGuard,
     RefreshTokenCookieInterceptor,
     ClearRefreshTokenCookieInterceptor,
   ],

@@ -2,6 +2,7 @@ import { join } from 'path';
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 
 import { AdminModule } from './admin/admin.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
       },
       resolvers: [new QueryResolver(['lang']), AcceptLanguageResolver],
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     RedisModule,
     UsersModule,

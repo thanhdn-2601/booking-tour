@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MailModule } from '../mail/mail.module';
 import { AdminBookingsService } from './admin-bookings.service';
+import { BookingCompletionTask } from './booking-completion.task';
 import { BookingStatusHistory } from './booking-status-history.entity';
 import { Booking } from './booking.entity';
 import { BookingsController } from './bookings.controller';
@@ -14,7 +15,7 @@ import { BookingsService } from './bookings.service';
     MailModule,
   ],
   controllers: [BookingsController],
-  providers: [AdminBookingsService, BookingsService],
+  providers: [AdminBookingsService, BookingsService, BookingCompletionTask],
   exports: [AdminBookingsService, BookingsService],
 })
 export class BookingsModule {}

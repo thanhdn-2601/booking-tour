@@ -14,16 +14,20 @@ import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
 import { CurrentAccessToken } from './decorators/current-access-token.decorator';
+import { CurrentOAuthProfile } from './decorators/current-oauth-profile.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RefreshTokenCookie } from './decorators/refresh-token-cookie.decorator';
 import { ActivateQueryDto } from './dto/activate-query.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GoogleCallbackAuthGuard } from './guards/google-callback-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ClearRefreshTokenCookieInterceptor } from './interceptors/clear-refresh-token-cookie.interceptor';
 import { RefreshTokenCookieInterceptor } from './interceptors/refresh-token-cookie.interceptor';
 import { ActivateResponse } from './interfaces/activate-response.interface';
 import { LoginResult } from './interfaces/login-result.interface';
+import type { OAuthProfile } from './interfaces/oauth-profile.interface';
 import { RegisterResponse } from './interfaces/register-response.interface';
 
 @ApiTags('auth')
@@ -75,5 +79,22 @@ export class AuthController {
     @RefreshTokenCookie() refreshToken: string | undefined,
   ): Promise<void> {
     return this.authService.logout(user.id, accessToken, refreshToken);
+  }
+
+  @ApiOperation({
+    summary: 'Log in with Google (opens the Google consent screen)',
+  })
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  googleLogin(): void {}
+
+  @ApiOperation({ summary: 'Google OAuth callback, returns the token pair' })
+  @Get('google/callback')
+  @UseGuards(GoogleCallbackAuthGuard)
+  @UseInterceptors(RefreshTokenCookieInterceptor)
+  googleCallback(
+    @CurrentOAuthProfile() profile: OAuthProfile,
+  ): Promise<LoginResult> {
+    return this.authService.loginWithGoogle(profile);
   }
 }

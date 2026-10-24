@@ -24,14 +24,17 @@ import { isUniqueViolation } from '../common/postgres-errors';
 import { ACTIVATION_TOKEN_BYTES, REFRESH_TOKEN_BYTES } from './auth.constants';
 import { RedisService } from '../redis/redis.service';
 import { User } from '../users/user.entity';
+import { UserRole } from '../users/user-role.enum';
 import { UserStatus } from '../users/user-status.enum';
 import { UsersService } from '../users/users.service';
+import { AuthIdentity } from './entities/auth-identity.entity';
 import { UserAuthSession } from './entities/user-auth-session.entity';
 import { ActivateResponse } from './interfaces/activate-response.interface';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { LoginResult } from './interfaces/login-result.interface';
+import { OAuthProfile } from './interfaces/oauth-profile.interface';
 import { RegisterResponse } from './interfaces/register-response.interface';
 import { SessionTokens } from './interfaces/session-tokens.interface';
 import { PASSWORD_SALT_ROUNDS } from './password.constants';
@@ -48,6 +51,8 @@ export class AuthService {
     private readonly i18n: I18nService,
     @InjectRepository(UserAuthSession)
     private readonly sessionsRepository: Repository<UserAuthSession>,
+    @InjectRepository(AuthIdentity)
+    private readonly authIdentitiesRepository: Repository<AuthIdentity>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly redisService: RedisService,
   ) {}
@@ -154,6 +159,18 @@ export class AuthService {
       });
     }
 
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new ForbiddenException({
+        code: 'USER_INACTIVE',
+        message: this.i18n.t('auth.user_inactive'),
+      });
+    }
+
+    return this.issueTokens(user);
+  }
+
+  async loginWithGoogle(profile: OAuthProfile): Promise<LoginResult> {
+    const user = await this.findOrCreateByOAuthProfile(profile);
     if (user.status !== UserStatus.ACTIVE) {
       throw new ForbiddenException({
         code: 'USER_INACTIVE',
@@ -327,6 +344,58 @@ export class AuthService {
     await sessionsRepository.save(session);
 
     return { refreshToken, refreshTokenExpiresAt };
+  }
+
+  private async findOrCreateByOAuthProfile(
+    profile: OAuthProfile,
+  ): Promise<User> {
+    const linked = await this.findUserByOAuthIdentity(profile);
+    if (linked) return linked;
+
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const email = profile.email.toLowerCase();
+        const existing = await manager.findOne(User, {
+          where: { email },
+          select: { id: true, status: true },
+        });
+        const user =
+          existing ??
+          (await manager.save(
+            manager.create(User, {
+              email,
+              fullName: profile.fullName,
+              password: null,
+              role: UserRole.USER,
+              status: UserStatus.ACTIVE,
+              emailVerifiedAt: new Date(),
+            }),
+          ));
+        await manager.insert(AuthIdentity, {
+          userId: user.id,
+          provider: profile.provider,
+          providerUserId: profile.providerUserId,
+        });
+        return user;
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      const user = await this.findUserByOAuthIdentity(profile);
+      if (!user) throw error;
+      return user;
+    }
+  }
+
+  private async findUserByOAuthIdentity({
+    provider,
+    providerUserId,
+  }: OAuthProfile): Promise<User | null> {
+    const identity = await this.authIdentitiesRepository.findOne({
+      where: { provider, providerUserId },
+      relations: { user: true },
+      select: { id: true, user: { id: true, status: true } },
+    });
+    return identity?.user ?? null;
   }
 
   private hashToken(token: string): string {
