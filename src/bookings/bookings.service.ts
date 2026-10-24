@@ -50,11 +50,23 @@ export class BookingsService {
             'tourTime.price',
             'tourTime.maxCapacity',
             'tourTime.status',
+            'tourTime.startDate',
           ])
           .getOne();
         if (!tourTime) return { kind: 'tour_time_not_found' };
         if (tourTime.status !== TourTimeStatus.OPEN) {
           return { kind: 'tour_time_not_open' };
+        }
+
+        // Compare in Postgres (CURRENT_DATE), not with a JS Date — consistent
+        // with every other start/end date check in this project, and avoids
+        // any server-timezone mismatch with the DB.
+        const [{ hasStarted }]: [{ hasStarted: boolean }] = await manager.query(
+          'SELECT $1::date <= CURRENT_DATE AS "hasStarted"',
+          [tourTime.startDate],
+        );
+        if (hasStarted) {
+          return { kind: 'tour_time_already_started' };
         }
 
         const bookedSlots = await getBookedSlots(manager, dto.tourTimeId);
@@ -93,6 +105,12 @@ export class BookingsService {
       throw new ConflictException({
         code: 'TOUR_TIME_NOT_OPEN',
         message: this.i18n.t('bookings.tour_time_not_open'),
+      });
+    }
+    if (outcome.kind === 'tour_time_already_started') {
+      throw new ConflictException({
+        code: 'TOUR_TIME_ALREADY_STARTED',
+        message: this.i18n.t('bookings.tour_time_already_started'),
       });
     }
     if (outcome.kind === 'not_enough_slots') {

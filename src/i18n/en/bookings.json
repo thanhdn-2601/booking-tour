@@ -4,5 +4,6 @@
   "not_enough_slots": "There are not enough slots left to confirm this booking",
   "reason_required": "Please provide a reason",
   "tour_time_not_open": "This tour time is not open for booking",
+  "tour_time_already_started": "This tour time has already started and can no longer be booked",
   "booking_cannot_be_cancelled": "This booking can no longer be cancelled"
 }

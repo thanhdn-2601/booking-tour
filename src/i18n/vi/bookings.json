@@ -4,5 +4,6 @@
   "not_enough_slots": "Không đủ chỗ trống để xác nhận booking này",
   "reason_required": "Vui lòng nhập lý do",
   "tour_time_not_open": "Lịch khởi hành này không mở để đặt chỗ",
+  "tour_time_already_started": "Lịch khởi hành này đã bắt đầu, không thể đặt chỗ nữa",
   "booking_cannot_be_cancelled": "Booking này không thể huỷ được nữa"
 }

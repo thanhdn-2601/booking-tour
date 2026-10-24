@@ -148,10 +148,16 @@ describe('Bookings (e2e)', () => {
     overrides: Partial<TourTime> = {},
   ): Promise<TourTime> {
     const tourTimesRepository = dataSource.getRepository(TourTime);
+    // Computed relative to "now" (not a hardcoded date) so this fixture stays
+    // bookable — i.e. startDate in the future — no matter when the suite runs.
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 7);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 2);
     const tourTime = tourTimesRepository.create({
       tourId,
-      startDate: '2026-10-01',
-      endDate: '2026-10-03',
+      startDate: startDate.toISOString().slice(0, 10),
+      endDate: endDate.toISOString().slice(0, 10),
       price: 3500000,
       maxCapacity: 20,
       status: TourTimeStatus.OPEN,
@@ -228,6 +234,23 @@ describe('Bookings (e2e)', () => {
       expect((res.body as ErrorBody).code).toBe('TOUR_TIME_NOT_OPEN');
     });
 
+    it('returns 409 when the tour time has already started', async () => {
+      const { accessToken } = await createCustomerAndLogin();
+      const tour = await createTour();
+      const tourTime = await createTourTime(tour.id, {
+        startDate: '2020-01-01',
+        endDate: '2020-01-03',
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/bookings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ tourTimeId: tourTime.id, numberOfSlots: 2 })
+        .expect(409);
+
+      expect((res.body as ErrorBody).code).toBe('TOUR_TIME_ALREADY_STARTED');
+    });
+
     it('returns 409 when there are not enough slots', async () => {
       const { user, accessToken } = await createCustomerAndLogin();
       const tour = await createTour();
@@ -300,7 +323,7 @@ describe('Bookings (e2e)', () => {
       expect(body.items).toHaveLength(1);
       expect(body.items[0]).toMatchObject({
         tourTitle: 'Đà Nẵng - Hội An',
-        startDate: '2026-10-01',
+        startDate: tourTime.startDate,
         status: 'pending',
         totalPrice: 7000000,
       });
@@ -361,8 +384,8 @@ describe('Bookings (e2e)', () => {
         id: booking.id,
         tourTime: {
           id: tourTime.id,
-          startDate: '2026-10-01',
-          endDate: '2026-10-03',
+          startDate: tourTime.startDate,
+          endDate: tourTime.endDate,
         },
         numberOfSlots: 2,
         status: 'pending',
