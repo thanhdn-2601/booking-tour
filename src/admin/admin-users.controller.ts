@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -17,6 +18,7 @@ import { PaginatedResponse } from '../common/interfaces/paginated-response.inter
 import { AdminListUsersQueryDto } from '../users/dto/admin-list-users-query.dto';
 import { UpdateUserRoleDto } from '../users/dto/update-user-role.dto';
 import { UpdateUserStatusDto } from '../users/dto/update-user-status.dto';
+import { User } from '../users/user.entity';
 import { UserRole } from '../users/user-role.enum';
 import { AdminUsersService } from './admin-users.service';
 import { AdminUserDetailResponse } from './interfaces/admin-user-detail-response.interface';
@@ -60,9 +62,10 @@ export class AdminUsersController {
   @ApiOperation({ summary: "Update a user's role" })
   @Patch(':userId/role')
   updateRole(
+    @CurrentUser() currentUser: User,
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: UpdateUserRoleDto,
   ): Promise<UpdateUserRoleResponse> {
-    return this.adminUsersService.updateRole(userId, dto.role);
+    return this.adminUsersService.updateRole(currentUser.id, userId, dto.role);
   }
 }

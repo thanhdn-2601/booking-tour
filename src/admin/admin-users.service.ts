@@ -104,9 +104,17 @@ export class AdminUsersService {
   }
 
   async updateRole(
+    actingAdminId: number,
     userId: number,
     role: UserRole,
   ): Promise<UpdateUserRoleResponse> {
+    if (actingAdminId === userId) {
+      throw new ConflictException({
+        code: 'CANNOT_CHANGE_OWN_ROLE',
+        message: this.i18n.t('users.cannot_change_own_role'),
+      });
+    }
+
     const result = await this.usersService.updateRole(userId, role);
     if (!result) {
       throw new NotFoundException({

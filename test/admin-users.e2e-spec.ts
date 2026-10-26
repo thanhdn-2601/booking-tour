@@ -91,6 +91,18 @@ describe('Admin users (e2e)', () => {
     return accessToken;
   }
 
+  async function createAdminAndLoginWithUser(): Promise<{
+    admin: User;
+    accessToken: string;
+  }> {
+    const admin = await createUser({
+      email: 'admin@example.com',
+      role: UserRole.ADMIN,
+    });
+    const { accessToken } = await login('admin@example.com');
+    return { admin, accessToken };
+  }
+
   describe('GET /api/v1/admin/users', () => {
     it('rejects a request without an access token', () => {
       return request(app.getHttpServer())
@@ -267,6 +279,23 @@ describe('Admin users (e2e)', () => {
         .expect(400);
 
       expect((res.body as ErrorBody).code).toBe('VALIDATION_ERROR');
+    });
+
+    it('rejects an admin changing their own role', async () => {
+      const { admin, accessToken } = await createAdminAndLoginWithUser();
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/users/${admin.id}/role`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ role: 'user' })
+        .expect(409);
+
+      expect((res.body as ErrorBody).code).toBe('CANNOT_CHANGE_OWN_ROLE');
+
+      const usersRepository = dataSource.getRepository(User);
+      await expect(
+        usersRepository.findOneByOrFail({ id: admin.id }),
+      ).resolves.toMatchObject({ role: UserRole.ADMIN });
     });
   });
 
