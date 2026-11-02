@@ -21,7 +21,12 @@ import {
 } from 'typeorm';
 
 import { isUniqueViolation } from '../common/postgres-errors';
-import { ACTIVATION_TOKEN_BYTES, REFRESH_TOKEN_BYTES } from './auth.constants';
+import { MailService } from '../mail/mail.service';
+import {
+  ACTIVATION_TOKEN_BYTES,
+  PASSWORD_RESET_TOKEN_BYTES,
+  REFRESH_TOKEN_BYTES,
+} from './auth.constants';
 import { RedisService } from '../redis/redis.service';
 import { User } from '../users/user.entity';
 import { UserRole } from '../users/user-role.enum';
@@ -30,12 +35,16 @@ import { UsersService } from '../users/users.service';
 import { AuthIdentity } from './entities/auth-identity.entity';
 import { UserAuthSession } from './entities/user-auth-session.entity';
 import { ActivateResponse } from './interfaces/activate-response.interface';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ForgotPasswordResponse } from './interfaces/forgot-password-response.interface';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { LoginResult } from './interfaces/login-result.interface';
 import { OAuthProfile } from './interfaces/oauth-profile.interface';
 import { RegisterResponse } from './interfaces/register-response.interface';
+import { ResetPasswordResponse } from './interfaces/reset-password-response.interface';
 import { SessionTokens } from './interfaces/session-tokens.interface';
 import { PASSWORD_SALT_ROUNDS } from './password.constants';
 
@@ -55,6 +64,7 @@ export class AuthService {
     private readonly authIdentitiesRepository: Repository<AuthIdentity>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly redisService: RedisService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(dto: RegisterDto): Promise<RegisterResponse> {
@@ -144,6 +154,76 @@ export class AuthService {
     }
 
     return { status: 'ACTIVATED' };
+  }
+
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ): Promise<ForgotPasswordResponse> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      return { status: 'RESET_EMAIL_SENT' };
+    }
+
+    const isAccountSetup = !user.password;
+    const templateKey = isAccountSetup ? 'account_setup' : 'password_reset';
+    const ttlHours = this.configService.getOrThrow<number>(
+      isAccountSetup
+        ? 'ACCOUNT_SETUP_TOKEN_TTL_HOURS'
+        : 'PASSWORD_RESET_TOKEN_TTL_HOURS',
+    );
+
+    const resetToken = randomBytes(PASSWORD_RESET_TOKEN_BYTES).toString('hex');
+    await this.usersService.setPasswordResetToken(
+      user.id,
+      this.hashToken(resetToken),
+      new Date(Date.now() + Number(ttlHours) * 60 * 60 * 1000),
+    );
+
+    try {
+      await this.mailService.send(
+        user.email,
+        this.i18n.t(`mail.${templateKey}_subject`),
+        this.i18n.t(`mail.${templateKey}_body`, { args: { resetToken } }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send password reset email to user ${user.id}`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
+
+    const isProduction = this.configService.get('NODE_ENV') === 'production';
+    return {
+      status: 'RESET_EMAIL_SENT',
+      ...(isProduction ? {} : { resetToken }),
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<ResetPasswordResponse> {
+    const passwordResetTokenHash = this.hashToken(dto.token);
+    const user = await this.usersService.findByPasswordResetTokenHash(
+      passwordResetTokenHash,
+    );
+    if (
+      !user ||
+      !user.passwordResetTokenExpiresAt ||
+      user.passwordResetTokenExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException({
+        code: 'RESET_TOKEN_INVALID_OR_EXPIRED',
+        message: this.i18n.t('auth.reset_token_invalid_or_expired'),
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      dto.newPassword,
+      PASSWORD_SALT_ROUNDS,
+    );
+    await this.dataSource.transaction(async (manager) => {
+      await this.usersService.resetPassword(user.id, hashedPassword, manager);
+      await this.revokeAllSessions(user.id, manager);
+    });
+    return { status: 'PASSWORD_RESET' };
   }
 
   async login(dto: LoginDto): Promise<LoginResult> {

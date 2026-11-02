@@ -74,6 +74,12 @@ jobs:
       JWT_ACCESS_TOKEN_TTL_SECONDS: 900
       REFRESH_TOKEN_TTL_DAYS: 7
       ACTIVATION_TOKEN_TTL_HOURS: 24
+      PASSWORD_RESET_TOKEN_TTL_HOURS: 1
+      ACCOUNT_SETUP_TOKEN_TTL_HOURS: 24
+      # Required by src/config/env-validation.schema.ts, which every e2e test
+      # triggers at app boot via AppModule — the e2e job never runs the admin
+      # seed script itself, so this is a throwaway placeholder, not a real admin.
+      SEED_ADMIN_EMAIL: ci-admin@tour-booking.local
       REDIS_HOST: localhost
       REDIS_PORT: 6379
       MAIL_HOST: localhost

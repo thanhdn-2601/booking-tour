@@ -22,6 +22,17 @@ import { UserRole } from './../src/users/user-role.enum';
 import { UserStatus } from './../src/users/user-status.enum';
 import { truncateAllTables } from './utils/database-cleaner';
 
+function futureDateString(daysFromNow: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromNow);
+  return date.toISOString().slice(0, 10);
+}
+
+// Computed relative to "now" rather than hardcoded so this stays a bookable,
+// upcoming tour time no matter how long after this test was written it runs.
+const TOUR_TIME_START_DATE = futureDateString(30);
+const TOUR_TIME_END_DATE = futureDateString(32);
+
 interface ErrorBody {
   code: string;
 }
@@ -119,8 +130,8 @@ describe('Tours (e2e)', () => {
     const tourTimesRepository = dataSource.getRepository(TourTime);
     const tourTime = tourTimesRepository.create({
       tourId,
-      startDate: '2026-11-01',
-      endDate: '2026-11-03',
+      startDate: TOUR_TIME_START_DATE,
+      endDate: TOUR_TIME_END_DATE,
       price: 3500000,
       maxCapacity: 20,
       status: TourTimeStatus.OPEN,
@@ -177,7 +188,7 @@ describe('Tours (e2e)', () => {
         categoryName: 'Du lịch biển',
         thumbnailUrl: '/a.jpg',
         priceFrom: 3500000,
-        nearestStartDate: '2026-11-01',
+        nearestStartDate: TOUR_TIME_START_DATE,
       });
     });
 
@@ -362,8 +373,8 @@ describe('Tours (e2e)', () => {
       expect(body.items).toHaveLength(1);
       expect(body.items[0]).toMatchObject({
         id: open.id,
-        startDate: '2026-11-01',
-        endDate: '2026-11-03',
+        startDate: TOUR_TIME_START_DATE,
+        endDate: TOUR_TIME_END_DATE,
         maxCapacity: 10,
         availableSlots: 7,
       });

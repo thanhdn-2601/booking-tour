@@ -6,6 +6,7 @@ import { EntityManager, ILike, Not, Repository } from 'typeorm';
 
 import { collectValidationErrors } from '../common/collect-validation-errors';
 import { AdminListUsersQueryDto } from './dto/admin-list-users-query.dto';
+import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { AdminUsersQueryResult } from './interfaces/admin-users-query-result.interface';
@@ -23,10 +24,25 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
+  private async validateDto<T extends object>(
+    cls: new () => T,
+    data: T,
+  ): Promise<T> {
+    const dto = plainToInstance(cls, data);
+    const errors = await validate(dto);
+    if (errors.length) {
+      throw new UnprocessableEntityException({
+        code: 'VALIDATION_ERROR',
+        errors: collectValidationErrors(errors),
+      });
+    }
+    return dto;
+  }
+
   findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
-      select: { id: true, password: true, status: true },
+      select: { id: true, email: true, password: true, status: true },
     });
   }
 
@@ -47,15 +63,46 @@ export class UsersService {
     });
   }
 
+  findByPasswordResetTokenHash(
+    passwordResetTokenHash: string,
+  ): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { passwordResetTokenHash },
+      select: { id: true, passwordResetTokenExpiresAt: true },
+    });
+  }
+
+  async setPasswordResetToken(
+    userId: number,
+    passwordResetTokenHash: string,
+    passwordResetTokenExpiresAt: Date,
+  ): Promise<void> {
+    await this.usersRepository.update(
+      { id: userId },
+      { passwordResetTokenHash, passwordResetTokenExpiresAt },
+    );
+  }
+
+  async resetPassword(
+    userId: number,
+    password: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const usersRepository = manager
+      ? manager.getRepository(User)
+      : this.usersRepository;
+    await usersRepository.update(
+      { id: userId },
+      {
+        password,
+        passwordResetTokenHash: null,
+        passwordResetTokenExpiresAt: null,
+      },
+    );
+  }
+
   async create(data: CreateUserDto): Promise<User> {
-    const dto = plainToInstance(CreateUserDto, data);
-    const errors = await validate(dto);
-    if (errors.length) {
-      throw new UnprocessableEntityException({
-        code: 'VALIDATION_ERROR',
-        errors: collectValidationErrors(errors),
-      });
-    }
+    const dto = await this.validateDto(CreateUserDto, data);
 
     const user = this.usersRepository.create({
       email: dto.email.toLowerCase(),
@@ -67,6 +114,21 @@ export class UsersService {
       emailVerifiedAt: null,
       activationTokenHash: dto.activationTokenHash,
       activationTokenExpiresAt: dto.activationTokenExpiresAt,
+    });
+    return this.usersRepository.save(user);
+  }
+
+  async createAdmin(data: CreateAdminDto): Promise<User> {
+    const dto = await this.validateDto(CreateAdminDto, data);
+
+    const user = this.usersRepository.create({
+      email: dto.email.toLowerCase(),
+      password: null,
+      fullName: dto.fullName,
+      phone: null,
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      emailVerifiedAt: new Date(),
     });
     return this.usersRepository.save(user);
   }
