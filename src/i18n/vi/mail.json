@@ -4,5 +4,9 @@
   "booking_rejected_subject": "Booking #{id} của bạn đã bị từ chối",
   "booking_rejected_body": "Booking cho tour \"{tourTitle}\" của bạn đã bị từ chối. Lý do: {reason}",
   "booking_cancelled_subject": "Booking #{id} của bạn đã bị huỷ",
-  "booking_cancelled_body": "Booking cho tour \"{tourTitle}\" của bạn đã bị huỷ. Lý do: {reason}"
+  "booking_cancelled_body": "Booking cho tour \"{tourTitle}\" của bạn đã bị huỷ. Lý do: {reason}",
+  "password_reset_subject": "Đặt lại mật khẩu",
+  "password_reset_body": "Dùng token này để đặt lại mật khẩu: {resetToken}",
+  "account_setup_subject": "Thiết lập mật khẩu tài khoản",
+  "account_setup_body": "Dùng token này để thiết lập mật khẩu tài khoản: {resetToken}"
 }

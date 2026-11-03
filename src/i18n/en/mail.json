@@ -4,5 +4,9 @@
   "booking_rejected_subject": "Your booking #{id} has been rejected",
   "booking_rejected_body": "Your booking for \"{tourTitle}\" has been rejected. Reason: {reason}",
   "booking_cancelled_subject": "Your booking #{id} has been cancelled",
-  "booking_cancelled_body": "Your booking for \"{tourTitle}\" has been cancelled. Reason: {reason}"
+  "booking_cancelled_body": "Your booking for \"{tourTitle}\" has been cancelled. Reason: {reason}",
+  "password_reset_subject": "Reset your password",
+  "password_reset_body": "Use this token to reset your password: {resetToken}",
+  "account_setup_subject": "Set up your account password",
+  "account_setup_body": "Use this token to set your account password: {resetToken}"
 }

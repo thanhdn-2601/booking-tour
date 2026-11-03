@@ -18,17 +18,21 @@ import { CurrentOAuthProfile } from './decorators/current-oauth-profile.decorato
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RefreshTokenCookie } from './decorators/refresh-token-cookie.decorator';
 import { ActivateQueryDto } from './dto/activate-query.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { GoogleCallbackAuthGuard } from './guards/google-callback-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ClearRefreshTokenCookieInterceptor } from './interceptors/clear-refresh-token-cookie.interceptor';
 import { RefreshTokenCookieInterceptor } from './interceptors/refresh-token-cookie.interceptor';
 import { ActivateResponse } from './interfaces/activate-response.interface';
+import { ForgotPasswordResponse } from './interfaces/forgot-password-response.interface';
 import { LoginResult } from './interfaces/login-result.interface';
 import type { OAuthProfile } from './interfaces/oauth-profile.interface';
 import { RegisterResponse } from './interfaces/register-response.interface';
+import { ResetPasswordResponse } from './interfaces/reset-password-response.interface';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -45,6 +49,24 @@ export class AuthController {
   @Get('activate')
   activate(@Query() query: ActivateQueryDto): Promise<ActivateResponse> {
     return this.authService.activate(query.token);
+  }
+
+  @ApiOperation({
+    summary: 'Request an emailed token to set or reset the account password',
+  })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<ForgotPasswordResponse> {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @ApiOperation({ summary: 'Set a new password using the emailed token' })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<ResetPasswordResponse> {
+    return this.authService.resetPassword(dto);
   }
 
   @ApiOperation({ summary: 'Log in with email and password' })

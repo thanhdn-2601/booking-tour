@@ -29,6 +29,7 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:run:test": "NODE_ENV=test npm run typeorm -- migration:run",
+    "seed:admin": "node -r tsconfig-paths/register -r ts-node/register src/database/seeds/admin.seed.ts",
     "db:test:create": "docker exec tour_booking_db psql -U postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'tour_booking_test'\" | grep -q 1 || docker exec tour_booking_db psql -U postgres -c \"CREATE DATABASE tour_booking_test\""
   },
   "dependencies": {
